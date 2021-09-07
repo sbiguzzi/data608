@@ -421,7 +421,6 @@ library(cowplot)</code></pre>
 <div id="quesiton-2" class="section level2">
 <h2>Quesiton 2</h2>
 <p>Lets dig in on the state with the 3rd most companies in the data set. Imagine you work for the state and are interested in how many people are employed by companies in different industries. Create a plot that shows the average and/or median employment by industry for companies in this state (only use cases with full data, use R’s <code>complete.cases()</code> function.) In addition to this, your graph should show how variable the ranges are, and you should deal with outliers.</p>
-<pre><code>## [1] 155</code></pre>
 <pre class="r"><code>dplot.ny &lt;-
   ggplot(third.most.companies, aes(x=Employees,
                                  y=reorder(Industry,EmpMedian))) + 
