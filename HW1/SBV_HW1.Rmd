@@ -1,0 +1,216 @@
+---
+title: "Stefano Biguzzi - HW #1"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+**Principles of Data Visualization and Introduction to ggplot2**
+
+I have provided you with data about the 5,000 fastest growing companies in the US, as compiled by Inc. magazine. lets read this in:
+
+```{r}
+inc <- read.csv("https://raw.githubusercontent.com/charleyferrari/CUNY_DATA_608/master/module1/Data/inc5000_data.csv", header= TRUE)
+```
+
+And lets preview this data:
+
+```{r}
+head(inc)
+```
+```{r}
+summary(inc)
+```
+
+Think a bit on what these summaries mean. Use the space below to add some more relevant non-visual exploratory information you think helps you understand this data:
+
+Summary means by industry
+```{r}
+ind_mean <- aggregate(inc[,c(3,4,6)],  by = list(inc$Industry), FUN = mean, na.rm = T)
+names(ind_mean)[1] <- 'Industry'
+ind_mean
+```
+
+Summary medians by industry
+```{r}
+ind_med <- aggregate(inc[,c(3,4,6)],  by = list(inc$Industry), FUN = median, na.rm = T)
+names(ind_med)[1] <- 'Industry'
+ind_med
+```
+
+Summary mean by state
+```{r}
+state_mean <- aggregate(inc[,c(3,4,6)],  by = list(inc$State), FUN = mean, na.rm = T)
+names(state_mean)[1] <- 'State'
+state_mean
+```
+
+Summary median by state
+```{r}
+state_med <- aggregate(inc[,c(3,4,6)],  by = list(inc$State), FUN = median, na.rm = T)
+names(state_med)[1] <- 'State'
+state_med
+```
+
+# Load Packages
+```{r, results='hide', message=F, comment=NA, warning=F}
+library(tidyverse)
+# library(plyr)
+library(cowplot)
+```
+
+
+## Question 1
+
+Create a graph that shows the distribution of companies in the dataset by State (ie how many are in each state). There are a lot of States, so consider which axis you should use. This visualization is ultimately going to be consumed on a 'portrait' oriented screen (ie taller than wide), which should further guide your layout choices.
+```{r, echo=F}
+state_count <- as.data.frame(
+  inc %>%
+    group_by(State) %>%
+    summarise(count = n_distinct(Name)))
+```
+
+```{r, fig.asp=1.2}
+ggplot(state_count, aes(x = count, y = reorder(State, count))) +
+  geom_bar(stat = 'identity', fill='#A2C0CD', width = 0.8) +
+  geom_text(aes(label = count), vjust = 0.3, hjust = -0.1,
+            color = '#545454', size = 3) +
+  geom_vline(
+    xintercept = median(state_count$count),
+    color = '#BF222C',
+    size = 0.5,
+    linetype="longdash",
+    alpha = 0.3) +
+  geom_text(
+    aes(x = median(count),y = 0,
+        label = paste("Median",round(median(count),1),sep = " = ")),
+    size=3.5, angle=270, vjust=-0.7, hjust=1.2, color = '#BF222C',
+    family="serif") +
+  scale_x_continuous(expand = c(0,0),limits = c(0,800)) +
+  scale_y_discrete(expand = c(0,0)) +
+  ggtitle("Number of companies by state") +
+  theme(
+    panel.background = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20,hjust=0.5),
+    axis.line.y = element_line(size = 0.5, color  = '#999999'),
+    axis.title.y = element_blank(),
+    axis.text.y = element_text(size = 9, color = 'black'),
+    axis.line.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank())
+```
+
+
+## Quesiton 2
+
+Lets dig in on the state with the 3rd most companies in the data set. Imagine you work for the state and are interested in how many people are employed by companies in different industries. Create a plot that shows the average and/or median employment by industry for companies in this state (only use cases with full data, use R's `complete.cases()` function.) In addition to this, your graph should show how variable the ranges are, and you should deal with outliers.
+
+```{r,echo=F}
+third.most.companies <-
+  inc[complete.cases(inc)&inc$State=="NY",]
+
+third.most.companies$EmpMedian <- ave(third.most.companies$Employees,
+                                      third.most.companies$Industry,
+                                      FUN=median)
+
+tmc_meds <- third.most.companies %>%
+  group_by(Industry) %>%
+  summarise(med = median(Employees))
+```
+
+```{r, fig.asp = 1}
+dplot.ny <-
+  ggplot(third.most.companies, aes(x=Employees,
+                                 y=reorder(Industry,EmpMedian))) + 
+  stat_boxplot(geom ='errorbar') +
+  geom_boxplot(width = 0.7, fill = "lightgrey") +
+  ggtitle("Boxplot of employees by industry in NY") +
+  scale_x_log10(limits = c(1, 35000),
+                expand = expansion(mult = c(0.01,0))) +
+  ylab(element_blank()) +
+  xlab("Employees (log scale)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(size = 18, color = '#545454',hjust=0.5),
+        axis.text.y = element_text(size=8,vjust=0.1))
+
+mplot.ny <-
+  ggplot(tmc_meds,aes(x=med, y=reorder(Industry,med))) +
+  geom_bar(stat = 'identity', width = 0.8, color='lightgrey',alpha=0.5) +
+  geom_text(aes(label = ceiling(med)), vjust = 0.4, hjust = -0.2,
+                color = 'black', size = 3) +
+  ggtitle("Median revenue per employee by industry") +
+  scale_x_continuous(expand = c(0,0),limits=c(0,165))+
+  theme_update() +
+  theme(
+    plot.title = element_text(size = 18, color = '#545454',hjust=0.5),
+    panel.background = element_blank(),
+    panel.grid = element_blank(),
+    axis.title = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size=8,vjust=0.1))
+
+plot_grid(dplot.ny,mplot.ny,nrow=2)
+
+```
+
+## Question 3
+
+Now imagine you work for an investor and want to see which industries generate the most revenue per employee. Create a chart that makes this information clear. Once again, the distribution per industry should be shown.
+```{r, echo = F}
+inc_complete <- inc[complete.cases(inc),]
+inc_complete$RevPerEmp <- inc_complete$Revenue/inc_complete$Employees
+
+
+employee.revenue <-
+  inc_complete %>%
+    group_by(Industry) %>%
+    summarize(revenue_per_employee = median(RevPerEmp))
+```
+```{r,fig.asp=1}
+dplot<-
+  ggplot(inc_complete, aes(x = RevPerEmp,
+                         y = reorder(Industry,RevPerEmp,median)))+
+  stat_boxplot(geom ='errorbar') +
+  geom_boxplot(width = 0.6, fill = "lightgrey")+
+  scale_x_log10(limits = c(1700, 45000000),
+                expand = expansion(mult = c(0.01,0)))+
+  ggtitle("Revenue per employee distribution by Industry") +
+  xlab(element_blank()) +
+  ylab(element_blank()) +
+  theme_minimal() +
+  theme(axis.text.y = element_text(vjust = 0.5, hjust=1, size=8),
+        axis.ticks.x = element_line(),
+        axis.line.x = element_line(color = 'lightgrey'),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.title = element_text(size = 16, color = '#545454',hjust=0.5)
+        )
+
+mplot<-
+  ggplot(employee.revenue,aes(x=revenue_per_employee/1000,
+                            y=reorder(Industry,revenue_per_employee))) +
+  geom_bar(stat = 'identity', width = 0.8, color='lightgrey',alpha=0.5) +
+  geom_text(aes(label = paste0(ceiling(revenue_per_employee/1000),'K')),
+            vjust = 0.4, hjust = -0.1, color = 'black', size = 3) +
+  ggtitle("Median revenue per employee by industry") +
+  scale_x_continuous(expand = c(0,0),limits=c(0,575))+
+  theme_update() +
+  theme(
+    plot.title = element_text(size = 18, color = '#545454',hjust=0.5),
+    panel.background = element_blank(),
+    panel.grid = element_blank(),
+    axis.title = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(size=8,vjust=0.1))
+
+plot_grid(dplot,mplot,nrow=2)
+```
+
+
